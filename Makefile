@@ -20,7 +20,7 @@ HPK_MASTER_PATH ?= ${HOME}/.hpk-master
 KUBE_PATH ?= ${HPK_MASTER_PATH}/kubernetes
 EXTERNAL_DNS ?= 8.8.8.8
 
-REGISTRY_NAME ?= carvicsforth
+REGISTRY_NAME ?= lefterisv
 
 K3S_IMAGE_TAG=$(REGISTRY_NAME)/hpk-master:$(VERSION)
 
