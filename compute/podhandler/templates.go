@@ -30,6 +30,7 @@ import (
 
 var genericMap = map[string]interface{}{
 	"param": EscapeSingleQuote,
+	"truncate": truncate,
 }
 
 // ParseTemplate returns a custom 'text/template' enhanced with functions for processing HPK templates.
@@ -51,6 +52,13 @@ func EscapeSingleQuote(str ...interface{}) string {
 		}
 	}
 	return strings.Join(out, " ")
+}
+
+func truncate(s string, max int) string {
+    if len(s) <= max {
+        return s
+    }
+    return s[:max]
 }
 
 func strval(v interface{}) string {
@@ -333,7 +341,7 @@ exec {{$.HostEnv.ApptainerBin}} exec --containall --net --fakeroot --scratch /sc
 --bind $HOME/.hpk-master/kubernetes:/k8s-data			\
 --bind /etc/apptainer/apptainer.conf				\
 --bind $HOME,/tmp									\
---hostname {{.Pod.Name}}							\
+--hostname {{truncate .Pod.Name 63}}							\
 {{$.PauseImageFilePath}} /usr/local/bin/hpk-pause -namespace {{.Pod.Namespace}} -pod {{.Pod.Name}} ||
 echo "[HOST] **SYSTEMERROR** hpk-pause exited with code $?" | tee {{.VirtualEnv.SysErrorFilePath}}
 
