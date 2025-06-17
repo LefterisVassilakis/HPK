@@ -12,9 +12,9 @@ fi
 ################################
 
 # Create testing dir with a populated file.
-mkdir -p /tmp/sea/
-echo "Yaar ! I 'm a pirate file hijacking your tmpfs" >> /tmp/sea/pirate
-echo "Sir, I 'm a privateer hunting down your pirate file" >> /tmp/sea/privateer
+mkdir -p /home/ubuntu/sea/
+echo "Yaar ! I 'm a pirate file hijacking your tmpfs" >> /home/ubuntu/sea/pirate
+echo "Sir, I 'm a privateer hunting down your pirate file" >> /home/ubuntu/sea/privateer
 
 # Set pod
 kubectl apply -f manifest.yaml -n "${TEST_NAMESPACE}"

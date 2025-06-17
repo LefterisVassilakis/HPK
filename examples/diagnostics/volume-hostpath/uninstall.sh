@@ -15,4 +15,4 @@ kubectl delete -f manifest.yaml -n "${TEST_NAMESPACE}"
 kubectl delete namespace "${TEST_NAMESPACE}"
 
 # Delete testing dir
-rm -rf /tmp/sea/
+rm -rf /home/ubuntu/sea/
