@@ -278,7 +278,7 @@ const HostScriptTemplate = `#!/bin/bash
                             # chance for better cleanup.
 
 {{- if .ResourceRequest.CPU}}
-#SBATCH --ntasks-per-node={{.ResourceRequest.CPU}}
+#SBATCH --cpus-per-task={{.ResourceRequest.CPU}}
 {{end}}
 
 {{- if .ResourceRequest.Memory}}
