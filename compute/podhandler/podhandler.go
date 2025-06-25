@@ -212,7 +212,7 @@ type PodHandler struct {
 	logger logr.Logger
 }
 
-func CreatePod(ctx context.Context, pod *corev1.Pod, watcher filenotify.FileWatcher) {
+func CreatePod(ctx context.Context, pod *corev1.Pod, watcher filenotify.FileWatcher, useTmp bool) {
 	/*---------------------------------------------------
 	 * Prepare the Pod Execution Environment
 	 *---------------------------------------------------*/
@@ -246,8 +246,28 @@ func CreatePod(ctx context.Context, pod *corev1.Pod, watcher filenotify.FileWatc
 	}
 
 	// create directory for volumes.
-	if err := os.MkdirAll(h.podDirectory.VolumeDir(), endpoint.PodGlobalDirectoryPermissions); err != nil {
-		compute.SystemPanic(err, "cannot create volume directory '%s'", h.podDirectory.VolumeDir())
+	//if err := os.MkdirAll(h.podDirectory.VolumeDir(), endpoint.PodGlobalDirectoryPermissions); err != nil {
+	//	compute.SystemPanic(err, "cannot create volume directory '%s'", h.podDirectory.VolumeDir())
+	//}
+
+	if useTmp {
+		// create directory for volumes in tmp directory
+		// and link it back to tis default space
+		originalPath := h.podDirectory.VolumeDir()
+		hpkIndex := strings.Index(originalPath, ".hpk")
+		suffix := originalPath[hpkIndex:]
+		tmpDir := os.TempDir()
+		tmpPath := filepath.Join(tmpDir, suffix)
+		if err := os.MkdirAll(tmpPath, endpoint.PodGlobalDirectoryPermissions); err != nil {
+			compute.SystemPanic(err, "cannot create volume directory '%s'", tmpPath)
+		}
+		if err := os.Symlink(tmpPath, originalPath); err != nil {
+			compute.SystemPanic(err, "cannot create symlink from '%s' to '%s'", originalPath, tmpPath)
+		}
+	} else {
+		// create directory for volumes.
+		if err := os.MkdirAll(h.podDirectory.VolumeDir(), endpoint.PodGlobalDirectoryPermissions); err != nil {
+			compute.SystemPanic(err, "cannot create volume directory '%s'", h.podDirectory.VolumeDir())
 	}
 
 	// create directory for control files.
