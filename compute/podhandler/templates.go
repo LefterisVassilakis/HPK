@@ -18,6 +18,10 @@ import (
 	"fmt"
 	"strings"
 	"text/template"
+	"os"
+	"path/filepath"
+	"errors"
+	"strconv"
 
 	"github.com/Masterminds/sprig"
 	"github.com/alessio/shellescape"
@@ -31,7 +35,14 @@ import (
 var genericMap = map[string]interface{}{
 	"param": EscapeSingleQuote,
 	"truncate": truncate,
+        "generateTmpCommands": generateTmpCommands,
 }
+
+type TmpCommandsResult struct {
+    Cmds []string
+    Err  error
+}
+
 
 // ParseTemplate returns a custom 'text/template' enhanced with functions for processing HPK templates.
 func ParseTemplate(text string) (*template.Template, error) {
@@ -75,6 +86,75 @@ func strval(v interface{}) string {
 		return fmt.Sprintf("%v", v)
 	}
 }
+
+func makeTmpPath(binds []string) (oldPath string, newPath string, err error) {
+    oldPath, err = findUniqueVolumesBind(binds)
+    if err != nil {
+        return "", "", err
+    }
+
+    tmpBase := os.TempDir()
+    tmpBase = strings.TrimRight(tmpBase, string(os.PathSeparator))
+
+    parts := strings.Split(oldPath, string(os.PathSeparator))
+
+    hpkIndex := -1
+    for i, p := range parts {
+        if p == ".hpk" {
+            hpkIndex = i
+            break
+        }
+    }
+    if hpkIndex == -1 {
+        return "", "", errors.New(".hpk directory not found in path")
+    }
+
+    remainder := parts[hpkIndex+1:]
+
+    newPath = filepath.Join(tmpBase, filepath.Join(remainder...))
+
+    return oldPath, newPath, nil
+}
+
+func findUniqueVolumesBind(binds []string) (string, error) {
+    var foundPath string
+    count := 0
+
+    for _, b := range binds {
+        hostPath := b
+        if i := strings.Index(b, ":"); i != -1 {
+            hostPath = b[:i]
+        }
+
+        idx := strings.Index(hostPath, "volumes")
+        if idx != -1 {
+            count++
+            if count > 1 {
+                return "", errors.New("more than one bind contains 'volumes'")
+            }
+            foundPath = hostPath[:idx+len("volumes")]
+        }
+    }
+
+    if count == 0 {
+        return "", errors.New("no bind contains 'volumes'")
+    }
+
+    return foundPath, nil
+}
+
+func generateTmpCommands(binds []string) TmpCommandsResult {
+    oldPath, newPath, err := makeTmpPath(binds)
+    if err != nil {
+        return TmpCommandsResult{Err: err}
+    }
+
+    mkdirCmd := fmt.Sprintf("mkdir -p %s || { echo 'mkdir failed'; exit 1; }", strconv.Quote(newPath))
+    lnCmd := fmt.Sprintf("ln -sfn %s %s || { echo 'ln failed'; exit 1; }", strconv.Quote(newPath), strconv.Quote(oldPath))
+
+    return TmpCommandsResult{Cmds: []string{mkdirCmd, lnCmd}}
+}
+
 
 /*
 	PauseScriptTemplate provides the template for building pods.
@@ -254,6 +334,8 @@ function handle_containers() {
 
 
 
+
+
 debug_info
 
 echo "[Virtual] Resetting Environment ..."
@@ -270,7 +352,25 @@ trap 'cleanup "${BASH_COMMAND}" "$?"'  EXIT
 
 {{if gt (len .InitContainers) 0 }} handle_init_containers {{end}}
 
-{{if gt (len .Containers) 0 }} handle_containers {{end}}
+{{- if gt (len .Containers) 0 }}
+
+  {{- if .UseTmp }}
+    {{- range $index, $container := .Containers }}
+      {{- $result := generateTmpCommands $container.Binds }}
+      {{- if $result.Err }}
+        echo "Error generating tmp commands for container {{$index}}: {{ $result.Err }}" >&2
+        exit 1
+      {{- else }}
+        {{- range $cmd := $result.Cmds }}
+          {{ $cmd }}
+	{{- end }}
+      {{ end }}
+    {{- end }}
+  {{- end }}
+
+  handle_containers
+
+{{- end }}
 `
 
 const HostScriptTemplate = `#!/bin/bash
@@ -338,7 +438,7 @@ exec {{$.HostEnv.ApptainerBin}} exec --containall --net --fakeroot --scratch /sc
 --apply-cgroups {{.VirtualEnv.CgroupFilePath}} 		\
 {{- end}}
 --env PARENT=${PPID}								\
---bind $HOME/.hpk-master/kubernetes:/k8s-data			\
+--bind $HOME/.k8sfs/kubernetes:/k8s-data			\
 --bind /etc/apptainer/apptainer.conf				\
 --bind $HOME,/tmp									\
 --hostname {{truncate .Pod.Name 63}}							\
@@ -371,6 +471,9 @@ type JobFields struct {
 
 	// CustomFlags are flags given by the user via 'slurm.hpk.io/flags' annotations
 	CustomFlags []string
+
+        // UseTmp is a flag that shows if tmp directories should be used.
+        UseTmp  bool
 }
 
 // The Container creates new within the Pod and resemble the "Container" semantics.

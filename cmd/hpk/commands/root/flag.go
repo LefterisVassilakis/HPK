@@ -101,5 +101,5 @@ func installFlags(flags *pflag.FlagSet, c *Opts) {
 	flags.StringVar(&c.TaintKey, "taint-key", "virtual-kubelet.io/provider", "Set node taint key")
 	flags.StringVar(&c.TaintValue, "taint-value", "hpk", "Set node taint value")
 	flags.StringVar(&c.TaintEffect, "taint-effect", string(corev1.TaintEffectNoSchedule), "Set node taint effect")
-	flags.BoolVar(&c.UseTmp, "use-tmp", false, "symlink the pods' volume directories under tmp")
+	flags.BoolVar(&c.UseTmp, "use-tmp", true, "symlink the pods' volume directories under tmp")
 }

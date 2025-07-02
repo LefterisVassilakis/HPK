@@ -40,8 +40,8 @@ spec:
     "spark.network.timeout": "2400"
     # S3 Credential
     "spark.hadoop.fs.s3a.endpoint": "http://artifacts.analytics-spark.svc:9000"
-    "spark.hadoop.fs.s3a.access.key": "QhMEqe2qZhgdTqEbQOg4"
-    "spark.hadoop.fs.s3a.secret.key": "8pEIiVZJEV9saFiR5eNakhEsEEPvY9Y598kRMkxo"
+    "spark.hadoop.fs.s3a.access.key": "ACCESS_KEY"
+    "spark.hadoop.fs.s3a.secret.key": "SECRET_KEY"
     # S3 Configs
     "spark.hadoop.fs.s3a.path.style.access": "true"
     "spark.hadoop.fs.s3a.fast.upload": "true"
@@ -49,14 +49,12 @@ spec:
     "spark.hadoop.fs.s3a.connection.maximum": "8192"
   driver:
     cores: 2
-    coreLimit: "2048m"
-    memory: "1000m"
+    memory: 8g
     serviceAccount: spark-operator-spark
   executor:
-    instances: 1
+    instances: 8
     cores: 1
-    memory: "1000m"
-    memoryOverhead: 1g
+    memory: 4g
     serviceAccount: spark-operator-spark
   restartPolicy:
     type: Never
